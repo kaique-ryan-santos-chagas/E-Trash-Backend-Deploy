@@ -83,8 +83,7 @@ module.exports = {
 		.first();
 		
 		await fs.unlink(`./temp/uploads/users/${oldAvatarKey.key}`, function(err){
-		if(err) throw err
-			return res.status(400).json("Imagem de perfil inexistente!");
+			if(err) throw err;
 		});
 		
 		await connection('uploads').where('user_id', userId).delete();
