@@ -31,15 +31,14 @@ module.exports = {
 
   production: {
     client: 'postgresql',
-    connection: 'process.env.DATABASE_URL',
-    ssl: true,
+    connection: process.env.DATABASE_URL,
     pool: {
       min: 2,
       max: 10
     },
     migrations: {
-      directory: './migrations',
-      tableName: 'knex_migrations'
+       directory: __dirname + './migrations',
+      
     }
   }
 
