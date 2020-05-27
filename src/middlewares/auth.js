@@ -2,12 +2,12 @@ const jwt = require('jsonwebtoken');
 const authConfig = require('../config/auth.json');
 
 
-module.exports = (request,response,next) => {
+module.exports = (request, response, next) => {
 
     const authHeader = request.headers.authentication;
 
     if(!authHeader)
-        return response.status(401).send({erro:'Token de autorização não informado!'});
+        return response.status(401).send({error:'Token de autorização não informado!'});
 
     const parts = authHeader.split(' ');
 
