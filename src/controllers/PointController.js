@@ -4,35 +4,36 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const authConfig = require('../config/auth');
 const fs = require('fs');
+const path = require('path');
 
 function hash(password){
-	const saltRounds = 12;
-	const salt = bcrypt.genSaltSync(saltRounds);
-	const hash = bcrypt.hashSync(password, salt);
-	return hash;
+    const saltRounds = 12;
+    const salt = bcrypt.genSaltSync(saltRounds);
+    const hash = bcrypt.hashSync(password, salt);
+    return hash;
 }
 
 function generateToken(params = {}){
-	return jwt.sign(params, authConfig.secret,{
-		expiresIn:86400,
-	});
+    return jwt.sign(params, authConfig.secret,{
+        expiresIn:86400,
+    });
 }
 
 module.exports = {
     index: async (request, response) => {
-        const companies = await connection('discarts_points').select('name','rua','numero','numero','discarts','country','city','region');
+        const points = await connection('discarts_points').select('name','rua','numero','numero','discarts','country','city','region');
         const [count] = await connection('companies').count();
+        response.header('Total-Companies-Count', count['count']);
 
         const pointsAvatarsKey = await connection('uploads').select('key');
-        const pointsAvatars = companiesAvatarsKey.map(function(item){
+        const pointsAvatars = pointsAvatarsKey.map(function(item){
             const avatar = path.resolve(`../../temp/uploads/points/${item}`);
             return avatar;
         }); 
-        response.header('Total-Companies-Count',count['count']);
         return response.json({points, avatar: pointsAvatars});
     },
-   	
-   	create: async (request, response) => {
+    
+    create: async (request, response) => {
         const {name, 
               passwordInput, 
               discarts, 
@@ -70,7 +71,7 @@ module.exports = {
     },
     
     delete: async (request, response) => {
-        const point_id = request.headers.authorization;
+        const point_id = request.headers.identification;
         const { passwordInput } = request.body;
         const idSearch = await connection('discarts_points').where('id', point_id).select('id')
         .first();
@@ -84,41 +85,45 @@ module.exports = {
         const passwordMatch = await bcrypt.compareSync(passwordInput, passwordDB.password);
 
         if(!passwordMatch){
-        	return response.status(400).json({error: 'Senha inválida'});
+            return response.status(400).json({error: 'Senha inválida'});
         }
 
-        const oldPointKey = await connection('uploads').where('point_id',point_id).select('key')
+        const oldPointKey = await connection('uploads').where('point_id',  point_id).select('key')
         .first();
-
-        fs.unlink(`./temp/uploads/companies/${oldPointKey.key}`, function(err){
-			if(err)throw err
-			res.status(400).json("Imagem de perfil inexistente!");
-		});
         
+        if(oldPointKey){
+            await fs.unlink(`./temp/uploads/points/${oldPointKey.key}`, function(err){
+                 if(err) throw err;
+            });
+        }
+        const imageID = await connection('uploads').select('id').where('point_id',point_id).first();
+
+        await connection('uploads').where('id',imageID.id).delete();
         await connection('discarts_points').where('id', point_id).delete();
-        return response.json('Ponto deletado com sucesso!');
+        
+        return response.json({sucess: 'Ponto deletado com sucesso!'});
     },
     
     upload: async(request, response) => {
-        const pointId = request.headers.identification;
-        const pointIDDB = await connection('discarts_points').where('id', pointId)
+        const point_id = request.headers.identification;
+        const pointIDDB = await connection('discarts_points').where('id', point_id)
         .select('id').first();
 
         if (!pointIDDB) {
-            return res.status(400).json({error: 'Ponto de coleta não encontrado.'})
+            return response.status(400).json({error: 'Ponto de coleta não encontrado.'})
         }
         
         const id = crypto.randomBytes(5).toString('HEX');
-        const point_id = userIDDB.id;
-        const imgName = req.file.originalname;
-        const size = req.file.size;
-        const key = req.file.filename;
+        const newPointId = pointIDDB.id;
+        const imgName = request.file.originalname;
+        const size = request.file.size;
+        const key = request.file.filename;
         await connection('uploads').insert({
             id,
             imgName,
             size,
             key,
-            point_id
+            point_id: newPointId
         }); 
         return response.json({sucess:"Imagem carregada com sucesso!" });
     

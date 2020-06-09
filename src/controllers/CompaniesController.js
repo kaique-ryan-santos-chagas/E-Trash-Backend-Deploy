@@ -5,6 +5,7 @@ const authConfig = require('../config/auth');
 const crypto = require('crypto');
 const axios = require('axios');
 const fs = require('fs');
+const path = require('path');
 
 function hash(password){
     const saltRounds = 12;
@@ -14,9 +15,9 @@ function hash(password){
 }
 
 function generateToken(params = {}){
-	return jwt.sign(params, authConfig.secret,{
-		expiresIn:86400,
-	});
+    return jwt.sign(params, authConfig.secret,{
+        expiresIn:86400,
+    });
 }
 
 module.exports = {
@@ -36,9 +37,8 @@ module.exports = {
                 'longitude');
 
         const [count] = await connection('companies').count();
-
         response.header('Total-Companies-Count', count['count']);
-        
+
         const companiesAvatarsKey = await connection('uploads').select('key');
         const companiesAvatars = companiesAvatarsKey.map(function(item){
             const avatar = path.resolve(`../../temp/uploads/companies/${item}`);
@@ -98,7 +98,7 @@ module.exports = {
     },
     
     async delete(request, response){
-        const companyId = req.headers.identification;
+        const companyId = request.headers.identification;
         const { passwordInput } = request.body;
 
         const companyIdBD = await connection('companies').where('id', companyId)
@@ -117,16 +117,24 @@ module.exports = {
             return response.status(401).json({error: 'Senha Inválida'});
         }
 
-        const oldCompanyKey = await connection('uploads').where('company_id',companyId)
+        const oldCompanyKey = await connection('uploads').where('company_id', companyId)
         .select('key').first();
 
-        fs.unlink(`./temp/uploads/companies/${oldCompanyKey.key}`, function(err){
-			if(err) throw err;
-        });
+        if(oldCompanyKey){
+            await fs.unlink(`./temp/uploads/companies/${oldCompanyKey.key}`, function(err){
+                 if(err) throw err;
+            });
+        }   
+        
+        const companyCollector = await connection('companies').where('collector', true)
+        .select('collector').first();
+        
+        if (companyCollector) {
+            await connection('schedule').where('company_collector_id', companyIdBD.id).delete();
+        }
         
         await connection('uploads').where('company_id', companyIdBD.id).delete();
         await connection('schedule').where('company_id', companyIdBD.id).delete();
-        await connection('schedule').where('company_collector_id', companyIdBD.id).delete();
         await connection('companies').where('id', companyIdBD.id).delete();
         return response.send();
     },
@@ -137,14 +145,14 @@ module.exports = {
         .select('id').first();
 
         if (!companyIDDB) {
-            return res.status(400).json({error: 'Empresa não encontrado.'})
+            return response.status(400).json({error: 'Empresa não encontrado.'})
         }
         
         const id = crypto.randomBytes(5).toString('HEX');
-        const company_id = userIDDB.id;
-        const imgName = req.file.originalname;
-        const size = req.file.size;
-        const key = req.file.filename;
+        const company_id = companyIDDB.id;
+        const imgName = request.file.originalname;
+        const size = request.file.size;
+        const key = request.file.filename;
         await connection('uploads').insert({
             id,
             imgName,

@@ -74,11 +74,11 @@ module.exports = {
 		       );
 
 
-		if (userDiscartsDB.discarts[0] == null) {
+		if (userDiscartsDB.discarts[0] == "") {
 			return res.status(400).json({error: 'Não encontramos seus descartes'});
 		}
 
-		if (discartPointsDB[0] == null) {
+		if (discartPointsDB[0] == "") {
 		   const userDiscartArr = userDiscartsDB.discarts;
 		   const discartsOfPoints = await connection('discarts_points')
 		   .select('discarts');
