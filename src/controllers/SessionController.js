@@ -28,11 +28,13 @@ module.exports = {
         if (!passwordMatch) {
             return res.status(400).json({error: 'Senha incorreta'});
         }
+
+        const userName = await connection('users').where('id', userIDDB.id).select('name').first();
         
         await connection('users').where('id', userIDDB.id).update({latitude: localLat, longitude: localLon });
         return res.json({
             id: userIDDB.id,
-            user: name,
+            user: userName.name,
             token: generateToken({id: userIDDB.id})
         });
 
@@ -56,18 +58,20 @@ module.exports = {
             return res.status(400).json({error: 'Senha Inválida'});
         }
 
+        const companyName = await connection('companies').where('id', companyID.id).select('name').first();
+
         await connection('companies').where('id', companyID.id).update({latitude: localLat, longitude: localLon });
         return res.json({
             id: company.id,
-            company: name,
+            company: companyName.name,
             token: generateToken({id: companyID.id})
         });
 
     },
 
     pointCreate: async (req, res) => {
-        const {email, passwordInput, localLat, localLon} = req.body;
-        const pointID = await connection('discarts_points').where('email', email).select('id')
+        const {name, passwordInput, localLat, localLon} = req.body;
+        const pointID = await connection('discarts_points').where('name', name).select('id')
         .first();
 
         if (!pointID) {
