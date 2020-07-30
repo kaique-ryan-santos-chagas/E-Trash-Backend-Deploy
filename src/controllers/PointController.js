@@ -21,7 +21,8 @@ function generateToken(params = {}){
 
 module.exports = {
     index: async (request, response) => {
-        const points = await connection('discarts_points').select('name','rua','numero','numero','discarts','country','city','region');
+        const points = await connection('discarts_points')
+        .select('name','rua','numero','numero','discarts','country','city','region');
         const [count] = await connection('companies').count();
         response.header('Total-Companies-Count', count['count']);
 
