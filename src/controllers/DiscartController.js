@@ -5,8 +5,9 @@ const itertools = require('itertools');
 
 module.exports = {
 	userCreate: async (req, res) => {
-		const { name, userDiscarts } = req.body;
-		const userIDDB = await connection('users').where('name', name)
+		const id = req.headers.identificaton;
+		const { userDiscarts } = req.body;
+		const userIDDB = await connection('users').where('id', id)
 		.select('id').first();
 
 		if(!userIDDB){
@@ -20,7 +21,8 @@ module.exports = {
 	},
 
 	companyCreate: async (req, res) => {
-		const { companyName, companyDiscarts } = req.body;
+		const id = req.headers.identificaton;
+		const { companyDiscarts } = req.body;
 		const companyIDDB = await connection('companies').where('name', companyName)
 		.select('id').first();
 
@@ -33,11 +35,12 @@ module.exports = {
 		});
 		return res.json({sucess: 'Seus descartes foram atualizados'});
 	},
-	
+
 	pointCreate: async (req, res) => {
-		const { pointName, pointDiscarts } = req.body;
+		const id = req.headers.identificaton;
+		const { pointDiscarts } = req.body;
 		const pointIDDB = await connection('discarts_points')
-		.where('name', pointName)
+		.where('id', id)
 		.select('id').first();
 
 		if(!pointIDDB){
@@ -144,7 +147,7 @@ module.exports = {
 			// case the filter return empty array
 			return res.status(400).json({error: 'Nenhum ponto de coleta encontrado'});
 	   }
-	   // case the dsiacarts of user return total Match with point discarts
+	   // case the disacarts of user return total Match with point discarts
        const avatarPointsUpload = await connection('uploads').select('*');
 	   const avatarPoints = avatarPointsUpload.filter(function(item){
 	   		for(const [upPointId, disPointId] of itertools.izipLongest(item.point_id, itertools.cycle(discartPointsDB.id), fillvalue='')){
