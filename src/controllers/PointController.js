@@ -7,16 +7,16 @@ const fs = require('fs');
 const path = require('path');
 
 function hash(password){
-    const saltRounds = 12;
-    const salt = bcrypt.genSaltSync(saltRounds);
-    const hash = bcrypt.hashSync(password, salt);
-    return hash;
+	const saltRounds = 12;
+	const salt = bcrypt.genSaltSync(saltRounds);
+	const hash = bcrypt.hashSync(password, salt);
+	return hash;
 }
 
 function generateToken(params = {}){
-    return jwt.sign(params, authConfig.secret,{
-        expiresIn:86400,
-    });
+	return jwt.sign(params, authConfig.secret,{
+		expiresIn:86400,
+	});
 }
 
 module.exports = {
@@ -34,8 +34,8 @@ module.exports = {
         }); 
         return response.json({points, avatar: pointsAvatars});
     },
-    
-    create: async (request, response) => {
+   	
+   	create: async (request, response) => {
         const {name, 
               passwordInput, 
               discarts, 
@@ -89,7 +89,7 @@ module.exports = {
         const passwordMatch = await bcrypt.compareSync(passwordInput, passwordDB.password);
 
         if(!passwordMatch){
-            return response.status(400).json({error: 'Senha inválida'});
+        	return response.status(400).json({error: 'Senha inválida'});
         }
 
         const oldPointKey = await connection('uploads').where('point_id',  point_id).select('key')
@@ -97,8 +97,8 @@ module.exports = {
         
         if(oldPointKey){
             await fs.unlink(`./temp/uploads/points/${oldPointKey.key}`, function(err){
-                 if(err) throw err;
-            });
+			     if(err) throw err;
+		    });
         }
         const imageID = await connection('uploads').select('id').where('point_id',point_id).first();
 

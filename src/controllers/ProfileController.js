@@ -1,194 +1,136 @@
 const connection = require('../database/connection');
+const crypto = require('crypto');
 const bcrypt = require('bcrypt');
-const path = require('path');
+const jwt = require('jsonwebtoken');
+const authConfig = require('../config/auth');
 const fs = require('fs');
+const path = require('path');
+
+function hash(password){
+	const saltRounds = 12;
+	const salt = bcrypt.genSaltSync(saltRounds);
+	const hash = bcrypt.hashSync(password, salt);
+	return hash;
+}
+
+function generateToken(params = {}){
+	return jwt.sign(params, authConfig.secret,{
+		expiresIn:86400,
+	});
+}
 
 module.exports = {
+    index: async (request, response) => {
+        const points = await connection('discarts_points').select('name','rua','numero','numero','discarts','country','city','region');
+        const [count] = await connection('disacrat_points').count();
+        response.header('Total-Points-Count', count['count']);
 
-	userProfile: async (req, res) => {
-		const userId = req.headers.identification;		
-		const matchIdUser = await connection('users').where('id', userId)
-		.select('id').first();
+        const pointsAvatarsKey = await connection('uploads').whereNotNull('point_id').select('key');
 
-		if(!matchIdUser){
-			return res.status(400).json({error: 'Usuário não encontrado'});
-		}
-		
-		const user = await connection('users').where('id', userId)
-		.select('id', 
-				'name', 
-				'email', 
-				'discarts', 
-				'country', 
-				'city', 
-				'region', 
-				'latitude', 
-				'longitude').first();
+        const pointsAvatars = pointsAvatarsKey.map(function(item){
+            const key = item.key;
+            const avatar = path.resolve(`../../temp/uploads/points/${key}`);
+            return avatar;
+        }); 
+        return response.json({points, avatar: pointsAvatars});
+    },
+   	
+   	create: async (request, response) => {
+        const {name, 
+              passwordInput, 
+              discarts, 
+              rua, 
+              numero,
+              country,
+              city,
+              region,
+              latitude,
+              longitude } = request.body;
 
+        const password = hash(passwordInput);
+        const id = crypto.randomBytes(5).toString("HEX");
 
-		var userAvatarDir = await connection('uploads').where('user_id', userId)
-		.select('key').first();
+        await connection('discarts_points').insert({
+            id,
+            name,
+            password,
+            discarts,
+            rua,
+            numero,
+            country,
+            city,
+            region,
+            latitude,
+            longitude
+        });
+        
+        return response.json({
+            welcome: `Bem-vindo(a) Ponto de Coleta ${name}`,
+            id: id,
+            token: generateToken({id: id}),
+            name: name,
+            discarts: discarts
+        });
 
-		if (!userAvatarDir) {
-			userAvatarDir = null;
-			return res.json({user, userAvatarDir});
-		}
+    },
+    
+    delete: async (request, response) => {
+        const point_id = request.headers.identification;
+        const { passwordInput } = request.body;
+        const idSearch = await connection('discarts_points').where('id', point_id).select('id')
+        .first();
+        
+        if(!idSearch){
+            return response.status(401).json({error: "Você não tem permissão para deletar este ponto!"});
+        }
 
-		const userAvatar = path.resolve(`../../temp/uploads/user/${userAvatarDir.key}`);
-		return res.json({user, userAvatar});
+        const passwordDB = await connection('discarts_points').where('id', point_id)
+        .select('password').first();
+        const passwordMatch = await bcrypt.compareSync(passwordInput, passwordDB.password);
 
-	},
+        if(!passwordMatch){
+        	return response.status(400).json({error: 'Senha inválida'});
+        }
 
-	updateUserAvatar: async (req, res) => {
-		const userId = req.headers.identification;
-		const userDB = await connection('users').where('id', userId)
-		.select('id').first();
+        const oldPointKey = await connection('uploads').where('point_id',  point_id).select('key')
+        .first();
+        
+        if(oldPointKey){
+            await fs.unlink(`./temp/uploads/points/${oldPointKey.key}`, function(err){
+			     if(err) throw err;
+		    });
+        }
+        const imageID = await connection('uploads').select('id').where('point_id',point_id).first();
 
-		if (!userDB) {
-			return res.status(400).json({error: 'Usuário não encontrado'});
-		}
+        await connection('uploads').where('id',imageID.id).delete();
+        await connection('discarts_points').where('id', point_id).delete();
+        
+        return response.json({sucess: 'Ponto deletado com sucesso!'});
+    },
+    
+    upload: async(request, response) => {
+        const point_id = request.headers.identification;
+        const pointIDDB = await connection('discarts_points').where('id', point_id)
+        .select('id').first();
 
-		const oldAvatarKey = await connection('uploads').where('user_id', userId)
-		.select('key').first();
+        if (!pointIDDB) {
+            return response.status(400).json({error: 'Ponto de coleta não encontrado.'})
+        }
+        
+        const id = crypto.randomBytes(5).toString('HEX');
+        const newPointId = pointIDDB.id;
+        const imgName = request.file.originalname;
+        const size = request.file.size;
+        const key = request.file.filename;
+        await connection('uploads').insert({
+            id,
+            imgName,
+            size,
+            key,
+            point_id: newPointId
+        }); 
+        return response.json({sucess:"Imagem carregada com sucesso!" });
+    
+    }
 
-		await fs.unlink(`./temp/uploads/users/${oldAvatarKey.key}`, function(err){
-			if(err) throw err;
-		});
-
-		const imgName = req.file.originalname;
-		const size = req.file.size;
-		const key = req.file.filename;
-
-	    await connection('uploads').where('user_id', userDB.id)
-		.update({ imgName: imgName, size: size, key: key });
-
-		return res.json({sucess: 'Avatar atualizado'}); 
-	},
-
-	companyProfile: async (req, res) => {
-		const companyId = req.headers.identification;		
-		const matchIdCompany = await connection('companies').where('id', companyId)
-		.select('id').first();
-
-		if(!matchIdCompany){
-			return res.status(400).json({error: 'Usuário não encontrado'});
-		}
-		
-		const company = await connection('companies').where('id', companyId)
-		.select('id', 
-				'cnpj', 
-				'name', 
-				'email', 
-				'discarts',
-				'activity',
-				'collector', 
-				'country', 
-				'city', 
-				'region',
-				'neightborhood',
-				'phone', 
-				'latitude', 
-				'longitude').first();
-
-		var companyAvatarDir = await connection('uploads').where('company_id', companyId)
-		.select('key').first();
-
-		if (!companyAvatarDir) {
-			companyAvatarDir = null;
-			return res.json({company, companyAvatarDir});
-		}
-
-		const companyAvatar = path.resolve(`../../temp/uploads/companies/${companyAvatarDir.key}`);
-		return res.json({company, companyAvatar});
-
-	},
-
-	updateCompanyAvatar: async (req, res) => {
-		const companyId = req.headers.identification;
-		const companyDB = await connection('companies').where('id', companyId)
-		.select('id').first();
-
-		if (!companyDB) {
-			return res.status(400).json({error: 'Empresa não encontrada'});
-		}
-
-		const oldCompanyKey = await connection('uploads').where('company_id', companyId)
-		.select('key').first();
-
-		fs.unlink(`./temp/uploads/companies/${oldCompanyKey.key}`, function(err){
-			if(err) throw err;
-		});
-
-		const imgName = req.file.originalname;
-		const size = req.file.size;
-		const key = req.file.filename;
-		 await connection('uploads').where('company_id', companyDB.id)
-		.update({ imgName: imgName, size: size, key: key });
-
-		return res.json({sucess: 'Avatar atualizado'}); 
-	},
-
-
-	pointProfile: async (req, res) => {
-		const pointId = req.headers.identification;		
-		const matchIdPoint = await connection('discarts_points').where('id', pointId)
-		.select('id').first();
-
-		if(!matchIdPoint){
-			return res.status(400).json({error: 'Ponto de coleta não encontrado'});
-		}
-
-		const point = await connection('discarts_points').where('id', pointId)
-		.select('id', 
-				'name', 
-				'rua',
-				'numero', 
-				'discarts', 
-				'country', 
-				'city', 
-				'region', 
-				'latitude', 
-				'longitude').first();
-
-		var pointAvatarDir = await connection('uploads').where('point_id', pointId)
-		.select('key').first();
-
-		const pointAvatar = path.resolve(`../../temp/uploads/points/${pointAvatarDir.key}`);
-
-		if (!pointAvatarDir) {
-			pointAvatarDir = null;
-			return res.json({point, pointAvatarDir});
-		}
-
-		return res.json({point, pointAvatar});
-
-	},
-
-	updatePointAvatar: async (req, res) => {
-		const pointId = req.headers.identification;
-		const pointDB = await connection('discarts_points').where('id', pointId)
-		.select('id').first();
-
-		if (!pointDB) {
-			return res.status(400).json({error: 'Ponto de coleta não encontrado'});
-		}
-
-		const oldPointAvatarKey = await connection('uploads').where('point_id', pointId)
-		.select('key').first();
-
-		await fs.unlink(`./temp/uploads/points/${oldPointAvatarKey.key}`, function(err){
-			if(err) throw err;
-		});
-
-
-		const imgName = req.file.originalname;
-		const size = req.file.size;
-		const key = req.file.filename;
-		await connection('uploads').where('point_id', pointDB.id)
-		.update({ imgName: imgName, size: size, key: key });
-
-		return res.json({sucess: 'Avatar atualizado'}); 
-		
-	}
-
-};
+}    

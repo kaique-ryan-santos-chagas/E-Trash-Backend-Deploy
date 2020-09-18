@@ -15,9 +15,9 @@ function hash(password){
 }
 
 function generateToken(params = {}){
-    return jwt.sign(params, authConfig.secret,{
-        expiresIn:86400,
-    });
+	return jwt.sign(params, authConfig.secret,{
+		expiresIn:86400,
+	});
 }
 
 module.exports = {
@@ -128,7 +128,7 @@ module.exports = {
 
         if(oldCompanyKey){
             await fs.unlink(`./temp/uploads/companies/${oldCompanyKey.key}`, function(err){
-                 if(err) throw err;
+			     if(err) throw err;
             });
         }   
         

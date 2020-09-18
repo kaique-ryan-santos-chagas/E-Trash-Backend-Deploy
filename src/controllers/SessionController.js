@@ -30,9 +30,9 @@ module.exports = {
         }
 
         const userName = await connection('users').where('id', userIDDB.id).select('name').first();
-        
-        await connection('users').where('id', userIDDB.id).update({latitude: localLat, longitude: localLon });
-        return res.json({
+		
+		await connection('users').where('id', userIDDB.id).update({latitude: localLat, longitude: localLon });
+		return res.json({
             id: userIDDB.id,
             user: userName.name,
             email: email,
