@@ -35,6 +35,7 @@ module.exports = {
         return res.json({
             id: userIDDB.id,
             user: userName.name,
+            email: email,
             token: generateToken({id: userIDDB.id})
         });
 

@@ -59,8 +59,6 @@ module.exports = {
 		const size = req.file.size;
 		const key = req.file.filename;
 
-		console.log({imgName:imgName});
-
 	    await connection('uploads').where('user_id', userDB.id)
 		.update({ imgName: imgName, size: size, key: key });
 
@@ -189,7 +187,7 @@ module.exports = {
 		await connection('uploads').where('point_id', pointDB.id)
 		.update({ imgName: imgName, size: size, key: key });
 
-		return res.json({sucess: 'Avartar atualizado'}); 
+		return res.json({sucess: 'Avatar atualizado'}); 
 		
 	}
 

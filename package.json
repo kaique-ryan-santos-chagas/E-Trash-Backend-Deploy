@@ -10,15 +10,15 @@
     "dotenv": "^8.2.0",
     "express": "^4.17.1",
     "fs": "0.0.1-security",
-    "ibm-watson": "^5.6.2",
-    "itertools": "^1.6.0",
+    "ibm-watson": "^5.7.0",
+    "itertools": "^1.6.1",
     "jsonwebtoken": "^8.5.1",
     "knex": "^0.20.15",
     "morgan": "^1.10.0",
     "multer": "^1.4.2",
-    "pg": "^8.2.0",
+    "pg": "^8.3.3",
     "socket.io": "^2.3.0",
-    "string-similarity": "^4.0.1"
+    "string-similarity": "^4.0.2"
   },
   "devDependencies": {
     "nodemon": "^2.0.4"

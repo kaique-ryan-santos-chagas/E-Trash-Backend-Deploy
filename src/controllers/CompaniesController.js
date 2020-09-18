@@ -92,9 +92,13 @@ module.exports = {
         });
 
         return response.json({
-            sucess: "Companhia cadastrada com sucesso",
+            welcome: `${name}`,
             id: id,
-            token: generateToken({id: id})
+            token: generateToken({id: id}),
+            email: email,
+            name: name,
+            phone: phone,
+            activity: activity
         });
     
     },
@@ -225,7 +229,21 @@ module.exports = {
         .select('cnpj','name', 'email', 'discarts', 'activity', 'country', 'city', 'region', 'neightborhood', 'phone', 'latitude', 'longitude');
 
         return response.json({solicitations, companySolicitation});
-    }
+    },
+    async scheduleDelete(request, response){
+        const id = request.headers.identification;
+
+        const idDB = await connection('companies').select('id').where('id',id).first();
         
+        if(!idDB){
+            return response.status(401).send('Erro ao deletar ponto');
+        }
+
+        await connection('schedule').where('company_id',idDB.id).delete();
+
+        return response.status(200).send('Agendamento deletado com sucesso!');
+        
+    }
+     
 };
     
