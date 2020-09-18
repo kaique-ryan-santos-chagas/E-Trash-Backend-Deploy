@@ -21,7 +21,7 @@ module.exports = (request,response,next) => {
         return response.status(401).json({error: 'Token mau formatado!'});
     
     jwt.verify(token, authConfig.secret, (err, decoded ) => {
-        if(err) return response.status(401).josn({error: 'Token Inválido'});
+        if(err) return response.status(401).json({error: 'Token Inválido'});
 
         request.userId = decoded.id;
         return next();
